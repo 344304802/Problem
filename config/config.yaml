@@ -1,0 +1,22 @@
+csv_path: "../question/2026年XJTU校赛题目/2026年校赛题目/A/Cement_ESP_Data.csv"
+
+mysql:
+  host: "localhost"
+  port: 3306
+  user: "root"
+  password: ""
+  database: "esp_opt"
+
+regime_k: 5
+c_limit: 10.0
+c_limit_new: 5.0
+seed: 42
+algo: "SLSQP"
+multi_start: 10
+fd_step_ratio: 0.01
+out_dir: "outputs"
+
+plot:
+  font_family: "SimHei"
+  color: "#333333"
+  dpi: 150
