@@ -3,7 +3,7 @@ from modeling.deutsch import predict_cout
 from modeling.power import predict_power
 
 
-def compare_two_regimes(regimes_results, model, bounds):
+def compare_two_regimes(regimes_results, model, bounds) :
     sorted_by_conc = sorted(regimes_results, key=lambda r: r["regime"]["mean"]["C_in"])
     rA = sorted_by_conc[-1]
     rB = sorted_by_conc[0]
@@ -11,13 +11,13 @@ def compare_two_regimes(regimes_results, model, bounds):
     params = model["deutsch"]
     power_model = model["power"]
 
-    def detail(r):
+    def detail(r) :
         regime = r["regime"]
         sol = r["sol"]
         Tin, Cin, Q = regime["mean"]["Temp"], regime["mean"]["C_in"], regime["mean"]["Q"]
         U, T = sol["U"], sol["T"]
         cout = predict_cout(params, Tin, Cin, Q, U, T)
-        P = predict_power(power_model, U, T=T)
+        P = predict_power(power_model, U, T = T)
         return {
             "id": regime["id"], "n": regime["n"],
             "Cin": Cin, "Temp": Tin, "Q": Q,

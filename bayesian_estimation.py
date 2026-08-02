@@ -17,12 +17,12 @@ from modeling.power import fit_power_model
 from modeling.deutsch import fit_deutsch_params, _deutsch_chain_vec
 
 
-def numeric_hessian(f, x, rel_step=1e-4):
+def numeric_hessian(f, x, rel_step = 1e-4) :
     n = len(x)
     H = np.zeros((n, n))
     h = np.maximum(rel_step * np.abs(x), rel_step)
-    for i in range(n):
-        for j in range(i, n):
+    for i in range(n) :
+        for j in range(i, n) :
             xpp = x.copy(); xpp[i] += h[i]; xpp[j] += h[j]
             xpm = x.copy(); xpm[i] += h[i]; xpm[j] -= h[j]
             xmp = x.copy(); xmp[i] -= h[i]; xmp[j] += h[j]
@@ -32,7 +32,7 @@ def numeric_hessian(f, x, rel_step=1e-4):
     return H
 
 
-def deutsch_posterior_ci(df, deutsch_model, bounds):
+def deutsch_posterior_ci(df, deutsch_model, bounds) :
     g = np.array(deutsch_model["g"])
     r_fixed = deutsch_model.get("r", 0.5)
     T_ref = np.array(deutsch_model["T_ref"])
@@ -47,13 +47,13 @@ def deutsch_posterior_ci(df, deutsch_model, bounds):
     T = [df[f"T{i}_s"].values for i in range(1, 5)]
     y = df["C_out_mgNm3"].values
 
-    def expand(p):
+    def expand(p) :
         return np.concatenate([p[0] * g, p[1:5]])
 
-    def loss(p):
+    def loss(p) :
         full = expand(p)
         pred = _deutsch_chain_vec(full, Tin, Cin, Q, U[0], U[1], U[2], U[3],
-                                  T[0], T[1], T[2], T[3], T_ref, r=r_fixed)
+                                  T[0], T[1], T[2], T[3], T_ref, r = r_fixed)
         rr = np.log(np.maximum(pred, 0.01)) - np.log(np.maximum(y, 0.01))
         return np.sum(rr ** 2)
 
@@ -61,16 +61,16 @@ def deutsch_posterior_ci(df, deutsch_model, bounds):
     n = len(y)
     p = len(popt)
     sigma2 = loss(popt) / (n - p)
-    try:
+    try :
         cov = 2 * sigma2 * np.linalg.inv(H)
-    except np.linalg.LinAlgError:
+    except np.linalg.LinAlgError :
         cov = 2 * sigma2 * np.linalg.pinv(H)
 
     se = np.sqrt(np.maximum(np.diag(cov), 0))
     z = 1.96
     names = ["kA_0", "alpha_1", "alpha_2", "alpha_3", "alpha_4"]
     ci = {}
-    for i, name in enumerate(names):
+    for i, name in enumerate(names) :
         ci[name] = {
             "est": float(popt[i]),
             "se": float(se[i]),
@@ -78,14 +78,14 @@ def deutsch_posterior_ci(df, deutsch_model, bounds):
             "ci_hi": float(popt[i] + z * se[i]),
         }
         rel = abs(se[i] / popt[i]) * 100 if popt[i] != 0 else float("inf")
-        print(f"  {name}: est={popt[i]:.4f}, se={se[i]:.4f}, 95%CI=[{popt[i]-z*se[i]:.4f}, {popt[i]+z*se[i]:.4f}], 相对不确定={rel:.1f}%")
+        print(f"  {name} : est = {popt[i]:.4f}, se = {se[i]:.4f}, 95%CI = [{popt[i]-z*se[i]:.4f}, {popt[i]+z*se[i]:.4f}], 相对不确定 = {rel:.1f}%")
 
     eigvals = np.linalg.eigvalsh(H)
-    print(f"  Hessian 特征值: min={eigvals.min():.4e}, max={eigvals.max():.4e}, 条件数={eigvals.max()/max(eigvals.min(),1e-30):.2e}")
+    print(f"  Hessian 特征值 : min = {eigvals.min():.4e}, max = {eigvals.max():.4e}, 条件数 = {eigvals.max()/max(eigvals.min(),1e-30):.2e}")
     return ci, {"cov": cov.tolist(), "sigma2": float(sigma2), "hessian_eigvals": eigvals.tolist()}
 
 
-def power_posterior_ci(df, power_model):
+def power_posterior_ci(df, power_model) :
     if not power_model.get("extended", False):
         print("  [SKIP] 电耗模型非扩展形式, 跳过贝叶斯区间")
         return None, None
@@ -97,16 +97,16 @@ def power_posterior_ci(df, power_model):
     P_pred = U @ beta
     rss = np.sum((P - P_pred) ** 2)
     sigma2 = rss / (n - p)
-    try:
+    try :
         cov = sigma2 * np.linalg.inv(U.T @ U)
-    except np.linalg.LinAlgError:
+    except np.linalg.LinAlgError :
         cov = sigma2 * np.linalg.pinv(U.T @ U)
 
     se = np.sqrt(np.maximum(np.diag(cov), 0))
     z = 1.96
     names = ["k_1", "k_2", "k_3", "k_4", "c"]
     ci = {}
-    for i, name in enumerate(names):
+    for i, name in enumerate(names) :
         ci[name] = {
             "est": float(beta[i]),
             "se": float(se[i]),
@@ -114,17 +114,17 @@ def power_posterior_ci(df, power_model):
             "ci_hi": float(beta[i] + z * se[i]),
         }
         rel = abs(se[i] / beta[i]) * 100 if beta[i] != 0 else float("inf")
-        print(f"  {name}: est={beta[i]:.4f}, se={se[i]:.4f}, 95%CI=[{beta[i]-z*se[i]:.4f}, {beta[i]+z*se[i]:.4f}], 相对不确定={rel:.1f}%")
+        print(f"  {name} : est = {beta[i]:.4f}, se = {se[i]:.4f}, 95%CI = [{beta[i]-z*se[i]:.4f}, {beta[i]+z*se[i]:.4f}], 相对不确定 = {rel:.1f}%")
     return ci, {"cov": cov.tolist(), "sigma2": float(sigma2)}
 
 
-def main():
+def main() :
     base_dir = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(base_dir, "config", "config.yaml"), "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     csv_path = os.path.join(base_dir, cfg["csv_path"]) if not os.path.isabs(cfg["csv_path"]) else cfg["csv_path"]
     out_dir = os.path.join(base_dir, cfg.get("out_dir", "outputs"))
-    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(out_dir, exist_ok = True)
 
     print("=" * 60)
     print("贝叶斯参数估计 (Laplace 近似)")
@@ -150,7 +150,7 @@ def main():
     }
     out_path = os.path.join(out_dir, "bayesian_ci.json")
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+        json.dump(result, f, indent = 2, ensure_ascii = False)
     print(f"\n[INFO] 贝叶斯区间已保存至 {out_path}")
 
 

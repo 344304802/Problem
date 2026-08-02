@@ -1,13 +1,13 @@
 import numpy as np
 
 
-def to_markdown_tables(results):
+def to_markdown_tables(results) :
     lines = []
     lines.append("# 电除尘器协同优化控制 - 结果汇总\n")
 
     lines.append("## 问题1：关系分析与特征重要性\n")
     fi = results.get("feature_importance", {})
-    if fi:
+    if fi :
         lines.append("### 特征重要性 (随机森林)\n")
         lines.append("| 特征 | 重要性 |")
         lines.append("|------|--------|")
@@ -22,22 +22,22 @@ def to_markdown_tables(results):
         lines.append("")
 
     pm = results.get("power_model", {})
-    if pm:
+    if pm :
         lines.append(f"### 电耗模型\n")
-        lines.append(f"$$P_{{total}} = \\sum_{{i=1}}^{{4}} k_i U_i^2$$\n")
+        lines.append(f"$$P_{{total}} = \\sum_{{i = 1}}^{{4}} k_i U_i^2$$\n")
         lines.append(f"$$k = {pm['k']}$$, $$R^2 = {pm['r2']:.4f}$$\n")
 
     dm = results.get("deutsch_model", {})
-    if dm:
+    if dm :
         lines.append(f"### Deutsch模型拟合\n")
         lines.append(f"$$R^2 = {dm['r2']:.4f}$$, $$RMSE = {dm['rmse']:.4f}$$\n")
 
     lines.append("## 问题2：工况划分与最优参数\n")
     sol2 = results.get("sol_all", [])
-    if sol2:
+    if sol2 :
         lines.append("| 工况 | 样本数 | C_in(g/Nm³) | Temp(℃) | U1 | U2 | U3 | U4 | T1 | T2 | T3 | T4 | P(kW) | C_out(mg/Nm³) |")
         lines.append("|------|--------|-------------|---------|----|----|----|----|----|----|----|----|-------|---------------|")
-        for r in sol2:
+        for r in sol2 :
             rg = r["regime"]; s = r["sol"]
             U = s["U"] if s["U"] else [0]*4
             T = s["T"] if s["T"] else [0]*4
@@ -46,7 +46,7 @@ def to_markdown_tables(results):
 
     lines.append("## 问题3：两工况对比与优先级\n")
     cmp = results.get("compare", {})
-    if cmp:
+    if cmp :
         rA, rB = cmp["regime_A"], cmp["regime_B"]
         lines.append(f"### 高浓度工况(工况{rA['id']})\n")
         lines.append(f"- $$C_{{in}} = {rA['Cin']:.2f}$$ g/Nm³, $$T = {rA['Temp']:.1f}$$ ℃")
@@ -62,7 +62,7 @@ def to_markdown_tables(results):
         lines.append("")
 
     prio = results.get("priority", {})
-    if prio:
+    if prio :
         lines.append(f"### 优先级判定\n")
         lines.append(f"$$\\text{{电压性价比}} = {prio['avg_ratio_U']:.6f}$$")
         lines.append(f"$$\\text{{振打性价比}} = {prio['avg_ratio_T']:.6f}$$")
@@ -70,7 +70,7 @@ def to_markdown_tables(results):
 
     lines.append("## 问题4：排放收紧影响分析\n")
     dp = results.get("delta_power", {})
-    if dp:
+    if dp :
         lines.append("### 各工况电耗增幅\n")
         lines.append("| 工况 | P*(10) (kW) | P*(5) (kW) | ΔP% |")
         lines.append("|------|-------------|------------|-----|")
@@ -83,16 +83,16 @@ def to_markdown_tables(results):
             lines.append(f"\n**整体平均电耗增幅: {dp['overall_delta_pct']:.2f}%**\n")
 
     feas = results.get("feasibility", [])
-    if feas:
+    if feas :
         lines.append("### 可行性校验\n")
         lines.append("| 工况 | 可行 | 说明 |")
         lines.append("|------|------|------|")
-        for f in feas:
+        for f in feas :
             lines.append(f"| {f['regime_id']} | {'✓' if f['feasible'] else '✗'} | {f['reason']} |")
         lines.append("")
 
     advice = results.get("advice", "")
-    if advice:
+    if advice :
         lines.append("### 高浓度工况应对建议\n")
         lines.append(advice)
 

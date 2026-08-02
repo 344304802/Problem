@@ -23,7 +23,7 @@ from optim.solve import solve_all_regimes
 from scipy.optimize import minimize
 
 
-def _load_all():
+def _load_all() :
     base_dir = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(base_dir, "config", "config.yaml"), "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
@@ -41,7 +41,7 @@ def _load_all():
 
 
 
-def main():
+def main() :
     df, bounds, model, regimes, out_dir, seed, cfg = _load_all()
     high_regime = max(regimes["regimes"], key=lambda r: r["mean"]["C_in"])
     params = model["deutsch"]
@@ -51,20 +51,20 @@ def main():
     print("\n=== C_limit 扫描 ===")
     clims = np.arange(3, 16, 1.0)
     P_scan = []
-    for cl in clims:
-        sol = solve_all_regimes(regimes, model, bounds, C_limit=cl, multi_start=5, seed=seed)
+    for cl in clims :
+        sol = solve_all_regimes(regimes, model, bounds, C_limit = cl, multi_start = 5, seed = seed)
         avg_P = np.mean([s["sol"]["P"] for s in sol if s["sol"]["P"]])
         P_scan.append(avg_P)
-        print(f"  C_limit={cl:.0f} -> avg P={avg_P:.1f}")
+        print(f"  C_limit = {cl:.0f} -> avg P = {avg_P:.1f}")
 
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize = (10, 7))
     ax.plot(clims, P_scan, "o-", color=COLOR, markersize=6, linewidth=2)
     ax.axvline(10, color="red", linestyle="--", alpha=0.5, label="当前标准 10")
     ax.axvline(5, color="orange", linestyle="--", alpha=0.5, label="收紧标准 5")
-    ax.set_xlabel("排放限值 $C_{limit}$ (mg/Nm³)")
+    ax.set_xlabel("排放限值 $C_{limit}$ (mg/Nm$^3$)")
     ax.set_ylabel("平均最优电耗 $\\bar{P}^*$ (kW)")
     ax.set_title("电耗-排放限值权衡曲线")
-    ax.legend(); ax.grid(True, alpha=0.3); style_ax(ax)
+    ax.legend(); ax.grid(True, alpha = 0.3); style_ax(ax)
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "climit_scan.png"), dpi=150)
     plt.close()
@@ -73,16 +73,16 @@ def main():
     print("\n=== r 敏感性测试 ===")
     r_values = [0.3, 0.5, 0.7, 1.0]
     r_results = {}
-    for r_val in r_values:
+    for r_val in r_values :
         params_r = {**params, "r": r_val}
         model_r = {"power": power_model, "deutsch": params_r}
-        sol = solve_all_regimes(regimes, model_r, bounds, C_limit=10.0, multi_start=5, seed=seed)
+        sol = solve_all_regimes(regimes, model_r, bounds, C_limit = 10.0, multi_start = 5, seed = seed)
         avg_P = np.mean([s["sol"]["P"] for s in sol if s["sol"]["P"]])
         r_results[r_val] = avg_P
-        print(f"  r={r_val} -> avg P={avg_P:.1f}")
+        print(f"  r = {r_val} -> avg P = {avg_P:.1f}")
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.bar([str(r) for r in r_values], [r_results[r] for r in r_values], color=PALETTE[0])
+    fig, ax = plt.subplots(figsize = (8, 6))
+    ax.bar([str(r) for r in r_values], [r_results[r] for r in r_values], color = PALETTE[0])
     ax.set_xlabel("振打双向偏离比例 $r$")
     ax.set_ylabel("平均最优电耗 $\\bar{P}^*$ (kW)")
     ax.set_title("$r$ 敏感性测试")
@@ -94,29 +94,29 @@ def main():
     # ===== 3. 振打同步性 =====
     print("\n=== 振打同步性分析 ===")
     T = np.column_stack([df[f"T{i}_s"].values for i in range(1, 5)])
-    T_mean_row = T.mean(axis=1)
-    cv = T.std(axis=1) / T_mean_row
+    T_mean_row = T.mean(axis = 1)
+    cv = T.std(axis = 1) / T_mean_row
     ratios_12 = df["T1_s"].values / df["T2_s"].values
     ratios_34 = df["T3_s"].values / df["T4_s"].values
-    print(f"  T 行内 CV: mean={cv.mean():.4f}, std={cv.std():.4f}")
-    print(f"  T1/T2 比值: mean={ratios_12.mean():.4f}, std={ratios_12.std():.4f}")
-    print(f"  T3/T4 比值: mean={ratios_34.mean():.4f}, std={ratios_34.std():.4f}")
+    print(f"  T 行内 CV : mean = {cv.mean():.4f}, std = {cv.std():.4f}")
+    print(f"  T1/T2 比值 : mean = {ratios_12.mean():.4f}, std = {ratios_12.std():.4f}")
+    print(f"  T3/T4 比值 : mean = {ratios_34.mean():.4f}, std = {ratios_34.std():.4f}")
 
     Cin_med = df["C_in_gNm3"].median()
     T_med = [df[f"T{i}_s"].median() for i in range(1, 5)]
     peak_sync = predict_peak(params, T_med, Cin_med)
     T_stagger = [T_med[0], T_med[1] * 1.15, T_med[2] * 0.85, T_med[3] * 1.1]
     peak_stagger = predict_peak(params, T_stagger, Cin_med)
-    print(f"  同步振打峰值: {peak_sync:.1f}")
-    print(f"  错峰振打峰值: {peak_stagger:.1f}")
+    print(f"  同步振打峰值 : {peak_sync:.1f}")
+    print(f"  错峰振打峰值 : {peak_stagger:.1f}")
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(1, 2, figsize = (14, 6))
     axes[0].hist(ratios_12, bins=50, color=PALETTE[0], alpha=0.7, label="$T_1/T_2$")
     axes[0].hist(ratios_34, bins=50, color=PALETTE[1], alpha=0.7, label="$T_3/T_4$")
     axes[0].set_xlabel("振打周期比值"); axes[0].set_ylabel("频次")
     axes[0].set_title("振打周期比值分布（1.0=同步）"); axes[0].legend(); style_ax(axes[0])
     axes[1].bar(["同步振打", "错峰振打"], [peak_sync, peak_stagger], color=[PALETTE[3], PALETTE[2]])
-    axes[1].set_ylabel("$C_{peak}$ (mg/Nm³)")
+    axes[1].set_ylabel("$C_{peak}$ (mg/Nm$^3$)")
     axes[1].set_title("同步 vs 错峰振打峰值对比"); style_ax(axes[1])
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "rapping_sync.png"), dpi=150)
@@ -124,11 +124,11 @@ def main():
 
     # ===== 4. Sobol 可视化 =====
     sobol_path = os.path.join(out_dir, "sobol_indices.json")
-    if os.path.exists(sobol_path):
+    if os.path.exists(sobol_path) :
         with open(sobol_path, "r", encoding="utf-8") as f:
             sob = json.load(f)
         names = sob["names"]
-        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        fig, axes = plt.subplots(1, 2, figsize = (16, 6))
         x = np.arange(len(names))
         w = 0.35
         for ax, key, title in [(axes[0], "cout", "$C_{out}$ Sobol"), (axes[1], "power", "$P$ Sobol")]:
@@ -151,7 +151,7 @@ def main():
                           "peak_sync": float(peak_sync), "peak_stagger": float(peak_stagger)},
     }
     with open(os.path.join(out_dir, "additional_analysis.json"), "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+        json.dump(result, f, indent = 2, ensure_ascii = False)
     print(f"\n[INFO] 补充分析完成, 保存至 {out_dir}")
 
 

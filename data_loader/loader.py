@@ -11,19 +11,19 @@ EXPECTED_COLS = [
 ]
 
 
-def load_raw(path):
+def load_raw(path) :
     df = pd.read_csv(path)
-    if list(df.columns) != EXPECTED_COLS:
-        raise ValueError(f"列名不符: 期望{EXPECTED_COLS}, 实际{list(df.columns)}")
+    if list(df.columns) != EXPECTED_COLS :
+        raise ValueError(f"列名不符 : 期望{EXPECTED_COLS}, 实际{list(df.columns)}")
     df["timestamp"] = pd.to_datetime(df["timestamp"])
-    for c in EXPECTED_COLS[1:]:
+    for c in EXPECTED_COLS[1:] :
         df[c] = df[c].astype("float64")
     if not df["timestamp"].is_monotonic_increasing:
         raise ValueError("时间戳非单调递增")
     diffs = df["timestamp"].diff().dropna().unique()
-    if len(diffs) > 1:
-        print(f"[WARN] 时间间隔不统一: {diffs}")
-    print(f"[INFO] 加载 {len(df)} 行, 缺失统计:")
+    if len(diffs) > 1 :
+        print(f"[WARN] 时间间隔不统一 : {diffs}")
+    print(f"[INFO] 加载 {len(df)} 行, 缺失统计 : ")
     miss = df.isna().sum()
     print(miss[miss > 0])
     return df
@@ -35,21 +35,21 @@ def clean_and_impute(df, method="time"):
     n_before = df["C_out_mgNm3"].isna().sum()
     if method == "time":
         df["C_out_mgNm3"] = df["C_out_mgNm3"].interpolate(method="time")
-    else:
+    else :
         df["C_out_mgNm3"] = df["C_out_mgNm3"].interpolate(method="linear")
     df = df.reset_index()
     print(f"[INFO] 插补C_out缺失 {n_before} 个")
 
     outliers = {}
-    for c in EXPECTED_COLS[1:]:
+    for c in EXPECTED_COLS[1:] :
         mu, sigma = df[c].mean(), df[c].std()
         mask = (df[c] < mu - 3 * sigma) | (df[c] > mu + 3 * sigma)
-        if mask.sum() > 0:
+        if mask.sum() > 0 :
             outliers[c] = int(mask.sum())
     df.attrs["outliers"] = outliers
 
     bounds = {}
-    for i in range(1, 5):
+    for i in range(1, 5) :
         ucol = f"U{i}_kV"
         tcol = f"T{i}_s"
         u_min = df[ucol].min()
@@ -61,5 +61,5 @@ def clean_and_impute(df, method="time"):
         bounds[f"T{i}"] = (float(t_min), float(t_max))
         bounds[f"T_crit{i}"] = float(t_crit)
     df.attrs["bounds"] = bounds
-    print(f"[INFO] 边界统计: {bounds}")
+    print(f"[INFO] 边界统计 : {bounds}")
     return df

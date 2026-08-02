@@ -5,7 +5,7 @@ from data_loader.loader import load_raw, clean_and_impute, EXPECTED_COLS
 
 
 @pytest.fixture
-def csv_path(tmp_path):
+def csv_path(tmp_path) :
     n = 200
     ts = pd.date_range("2024-01-01", periods=n, freq="1min")
     rng = np.random.RandomState(0)
@@ -29,32 +29,32 @@ def csv_path(tmp_path):
     df.loc[10, "C_out_mgNm3"] = np.nan
     df.loc[20, "C_out_mgNm3"] = np.nan
     p = tmp_path / "sample.csv"
-    df.to_csv(p, index=False)
+    df.to_csv(p, index = False)
     return p
 
 
-def test_load_raw_columns(csv_path):
+def test_load_raw_columns(csv_path) :
     df = load_raw(csv_path)
     assert list(df.columns) == EXPECTED_COLS
 
 
-def test_load_raw_timestamp_monotonic(csv_path):
+def test_load_raw_timestamp_monotonic(csv_path) :
     df = load_raw(csv_path)
     assert df["timestamp"].is_monotonic_increasing
 
 
-def test_clean_impute_fills_nan(csv_path):
+def test_clean_impute_fills_nan(csv_path) :
     df = load_raw(csv_path)
     assert df["C_out_mgNm3"].isna().sum() == 2
     df2 = clean_and_impute(df)
     assert df2["C_out_mgNm3"].isna().sum() == 0
 
 
-def test_clean_impute_bounds(csv_path):
+def test_clean_impute_bounds(csv_path) :
     df = load_raw(csv_path)
     df2 = clean_and_impute(df)
     bounds = df2.attrs["bounds"]
-    for i in range(1, 5):
+    for i in range(1, 5) :
         assert f"U{i}" in bounds and f"T{i}" in bounds and f"T_crit{i}" in bounds
         u_lo, u_hi = bounds[f"U{i}"]
         assert u_lo < u_hi
@@ -62,8 +62,8 @@ def test_clean_impute_bounds(csv_path):
         assert t_lo < t_hi
 
 
-def test_load_raw_bad_columns(tmp_path):
+def test_load_raw_bad_columns(tmp_path) :
     p = tmp_path / "bad.csv"
     pd.DataFrame({"a": [1], "b": [2]}).to_csv(p, index=False)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) :
         load_raw(p)

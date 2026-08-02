@@ -24,7 +24,7 @@ from report.plots import (plot_relation_curves, plot_regime_scatter,
 from report.tables import to_markdown_tables
 
 
-def load_config(path):
+def load_config(path) :
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -37,7 +37,7 @@ def run_pipeline(cfg_path="config/config.yaml", skip_mysql=True):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.join(base_dir, cfg["csv_path"]) if not os.path.isabs(cfg["csv_path"]) else cfg["csv_path"]
     out_dir = os.path.join(base_dir, cfg.get("out_dir", "outputs"))
-    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(out_dir, exist_ok = True)
 
     print("=" * 60)
     print("步骤1: 数据加载与预处理")
@@ -59,9 +59,9 @@ def run_pipeline(cfg_path="config/config.yaml", skip_mysql=True):
     print("步骤3: 问题2 - 工况划分与寻优")
     print("=" * 60)
     k = cfg.get("regime_k", 5)
-    regimes = cluster_regimes(df, k=k, seed=seed)
+    regimes = cluster_regimes(df, k = k, seed = seed)
     C_limit = cfg.get("c_limit", 10.0)
-    sol_all = solve_all_regimes(regimes, model, bounds, C_limit=C_limit,
+    sol_all = solve_all_regimes(regimes, model, bounds, C_limit = C_limit,
                                multi_start=cfg.get("multi_start", 10), seed=seed)
 
     print("\n" + "=" * 60)
@@ -71,7 +71,7 @@ def run_pipeline(cfg_path="config/config.yaml", skip_mysql=True):
 
     high_regime = cmp["regime_A"]
     high_sol = None
-    for r in sol_all:
+    for r in sol_all :
         if r["regime"]["id"] == high_regime["id"]:
             high_sol = r["sol"]
             break
@@ -88,14 +88,14 @@ def run_pipeline(cfg_path="config/config.yaml", skip_mysql=True):
     print("步骤5: 问题4 - 排放收紧分析")
     print("=" * 60)
     C_limit_new = cfg.get("c_limit_new", 5.0)
-    sol5_all = resolve_under_limit(regimes, model, bounds, C_limit_new=C_limit_new,
+    sol5_all = resolve_under_limit(regimes, model, bounds, C_limit_new = C_limit_new,
                                    multi_start=cfg.get("multi_start", 10), seed=seed)
     dp = delta_power(sol_all, sol5_all)
     feas = feasibility_check(sol5_all, bounds)
 
     advice = ""
-    if high_sol and sol5_all:
-        for r in sol5_all:
+    if high_sol and sol5_all :
+        for r in sol5_all :
             if r["regime"]["id"] == high_regime["id"]:
                 high_sol5 = r["sol"]
                 regime_obj = next(rr["regime"] for rr in sol_all if rr["regime"]["id"] == high_regime["id"])
@@ -109,7 +109,7 @@ def run_pipeline(cfg_path="config/config.yaml", skip_mysql=True):
     plot_relation_3d(model, df, out_dir)
     plot_regime_scatter(regimes, df, out_dir)
     plot_param_compare(cmp, out_dir)
-    if sens:
+    if sens :
         plot_sensitivity_heatmap(sens, out_dir)
     plot_delta_power(dp, out_dir)
 
@@ -141,7 +141,7 @@ def run_pipeline(cfg_path="config/config.yaml", skip_mysql=True):
         "deutsch_r2": deutsch_model["r2"] if deutsch_model else None,
     }
     with open(os.path.join(out_dir, "run_meta.json"), "w", encoding="utf-8") as f:
-        json.dump(meta, f, indent=2, ensure_ascii=False)
+        json.dump(meta, f, indent = 2, ensure_ascii = False)
 
     print("\n" + "=" * 60)
     print("全流程完成!")
@@ -156,4 +156,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     base = os.path.dirname(os.path.abspath(__file__))
     cfg_path = args.config if os.path.isabs(args.config) else os.path.join(base, args.config)
-    run_pipeline(cfg_path=cfg_path, skip_mysql=args.skip_mysql)
+    run_pipeline(cfg_path = cfg_path, skip_mysql = args.skip_mysql)

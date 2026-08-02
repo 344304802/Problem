@@ -11,26 +11,26 @@ FEATURE_COLS = [
 ]
 
 
-def feature_importance(df):
+def feature_importance(df) :
     X = df[FEATURE_COLS].values
     y = df["C_out_mgNm3"].values
 
-    rf = RandomForestRegressor(n_estimators=100, random_state=42)
+    rf = RandomForestRegressor(n_estimators = 100, random_state = 42)
     rf.fit(X, y)
-    gb = GradientBoostingRegressor(n_estimators=100, random_state=42)
+    gb = GradientBoostingRegressor(n_estimators = 100, random_state = 42)
     gb.fit(X, y)
 
     rf_imp = dict(zip(FEATURE_COLS, rf.feature_importances_.tolist()))
     gb_imp = dict(zip(FEATURE_COLS, gb.feature_importances_.tolist()))
 
     pearson = {}
-    for c in FEATURE_COLS:
+    for c in FEATURE_COLS :
         r, p = pearsonr(df[c].values, y)
         pearson[c] = {"r": float(r), "p": float(p)}
 
     print("[INFO] 特征重要性(RF):")
-    for c, v in sorted(rf_imp.items(), key=lambda x: -x[1]):
-        print(f"  {c}: {v:.4f}")
+    for c, v in sorted(rf_imp.items(), key = lambda x : -x[1]) :
+        print(f"  {c} : {v:.4f}")
     print("[INFO] Pearson相关:")
     for c, v in sorted(pearson.items(), key=lambda x: -abs(x[1]["r"])):
         print(f"  {c}: r={v['r']:.4f}, p={v['p']:.4e}")

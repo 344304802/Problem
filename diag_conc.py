@@ -50,21 +50,21 @@ print("\n=== 理论分析: 固定U=历史均值时 C_out 对 C_in 的依赖 ==="
 U_hist = [58.4, 58.4, 48.2, 48.2]
 T_hist = [230, 230, 441, 441]
 Q_mean = df["Q_Nm3h"].mean()
-for Cin in [20, 30, 40, 50, 60, 70]:
+for Cin in [20, 30, 40, 50, 60, 70] :
     cout = predict_cout(deutsch, 126, Cin, Q_mean, U_hist, T_hist)
     etas = predict_eta(deutsch, U_hist, T_hist, Q_mean)
     prod = np.prod([1-e for e in etas])
-    print(f"C_in={Cin:>3}: C_out={cout:>7.2f}, Π(1-η)={prod:.6e}")
+    print(f"C_in = {Cin:>3} : C_out = {cout:>7.2f}, Π(1-η) = {prod:.6e}")
 
 print("\n=== 要达标需要的 Π(1-η) ===")
-for Cin in [20, 30, 40, 50, 60, 70]:
+for Cin in [20, 30, 40, 50, 60, 70] :
     needed = 10.0 / (Cin * 1000)
-    print(f"C_in={Cin:>3}: 需 Π(1-η)={needed:.6e} (ln={np.log(needed):.3f})")
+    print(f"C_in = {Cin:>3} : 需 Π(1-η) = {needed:.6e} (ln = {np.log(needed):.3f})")
 
 print("\n=== 各电场效率对U的敏感度 (在历史点) ===")
-for i in range(4):
+for i in range(4) :
     U = list(U_hist)
-    for dU in [-2, 0, 2]:
+    for dU in [-2, 0, 2] :
         Uu = U.copy(); Uu[i] += dU
         etas = predict_eta(deutsch, Uu, T_hist, Q_mean)
-        print(f"  U{i+1}={Uu[i]:.1f}: η={etas}")
+        print(f"  U{i+1} = {Uu[i]:.1f} : η = {etas}")

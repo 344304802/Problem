@@ -6,7 +6,7 @@ COLOR = "#333333"
 PALETTE = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B2", "#937856"]
 
 
-def setup():
+def setup() :
     plt.rcParams.update({
         "font.sans-serif": ["SimHei", "Microsoft YaHei"],
         "axes.unicode_minus": False,
@@ -29,14 +29,16 @@ def setup():
     })
 
 
-def style_ax(ax, grid=True):
-    ax.tick_params(colors=COLOR)
-    for s in ax.spines.values():
+def style_ax(ax, grid = True) :
+    ax.tick_params(colors = COLOR)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    for s in ax.spines.values() :
         s.set_color(COLOR)
     ax.title.set_color(COLOR)
     ax.xaxis.label.set_color(COLOR)
     ax.yaxis.label.set_color(COLOR)
-    if grid:
+    if grid :
         ax.grid(True, alpha=0.25, linestyle="--", linewidth=0.5)
-    else:
+    else :
         ax.grid(False)

@@ -7,7 +7,7 @@ from modeling.power import fit_power_model, predict_power
 from modeling.deutsch import fit_deutsch_params, predict_cout
 
 
-def metrics(y, yhat):
+def metrics(y, yhat) :
     y = np.asarray(y); yhat = np.asarray(yhat)
     rmse = np.sqrt(np.mean((y - yhat) ** 2))
     mae = np.mean(np.abs(y - yhat))
@@ -17,7 +17,7 @@ def metrics(y, yhat):
     return rmse, mae, r2
 
 
-def run():
+def run() :
     cfg = yaml.safe_load(open(os.path.join(os.path.dirname(__file__), "config/config.yaml"), encoding="utf-8"))
     csv_path = os.path.join(os.path.dirname(__file__), cfg["csv_path"])
     df = load_raw(csv_path)
@@ -28,7 +28,7 @@ def run():
     n_train = 5 * 1440  # 前5天训练
     df_train = df.iloc[:n_train].copy()
     df_test = df.iloc[n_train:].copy()
-    print(f"\n=== 时序交叉验证: 训练 {n_train} 行(前5天), 测试 {n-n_train} 行(后2天) ===")
+    print(f"\n=== 时序交叉验证 : 训练 {n_train} 行(前5天), 测试 {n-n_train} 行(后2天) ===")
 
     # 在训练集拟合
     print("\n--- 训练集拟合 ---")
@@ -53,8 +53,8 @@ def run():
 
     rmse_c, mae_c, r2_c = metrics(y_c_test, yhat_c)
     rmse_p, mae_p, r2_p = metrics(y_p_test, yhat_p)
-    print(f"\nC_out 预测: RMSE={rmse_c:.4f}, MAE={mae_c:.4f}, R²={r2_c:.4f}")
-    print(f"P_total 预测: RMSE={rmse_p:.4f}, MAE={mae_p:.4f}, R²={r2_p:.4f}")
+    print(f"\nC_out 预测 : RMSE = {rmse_c:.4f}, MAE = {mae_c:.4f}, R² = {r2_c:.4f}")
+    print(f"P_total 预测 : RMSE = {rmse_p:.4f}, MAE = {mae_p:.4f}, R² = {r2_p:.4f}")
 
     # 训练集上的表现(对比过拟合)
     y_c_train = df_train["C_out_mgNm3"].values
@@ -65,7 +65,7 @@ def run():
         for _, r in df_train.iterrows()
     ])
     rmse_c_tr, _, r2_c_tr = metrics(y_c_train, yhat_c_tr)
-    print(f"\n(对比) 训练集 C_out: RMSE={rmse_c_tr:.4f}, R²={r2_c_tr:.4f}")
+    print(f"\n(对比) 训练集 C_out : RMSE = {rmse_c_tr:.4f}, R² = {r2_c_tr:.4f}")
     print(f"泛化差距 ΔRMSE = {rmse_c - rmse_c_tr:.4f} (测试-训练)")
 
     return {"rmse_c_test": rmse_c, "r2_c_test": r2_c, "rmse_p_test": rmse_p, "r2_p_test": r2_p,

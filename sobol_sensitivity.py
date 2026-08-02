@@ -19,7 +19,7 @@ from modeling.deutsch import fit_deutsch_params, predict_cout
 from optim.regime import cluster_regimes
 
 
-def main():
+def main() :
     base_dir = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(base_dir, "config", "config.yaml"), "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
@@ -64,18 +64,18 @@ def main():
     N = 1024
     np.random.seed(seed)
     X = saltelli.sample(problem, N)
-    print(f"[INFO] Saltelli 采样: N={N}, 总样本={len(X)}")
+    print(f"[INFO] Saltelli 采样 : N = {N}, 总样本 = {len(X)}")
 
     Y_c = np.zeros(len(X))
     Y_p = np.zeros(len(X))
-    for i, x in enumerate(X):
+    for i, x in enumerate(X) :
         U, T = x[:4], x[4:8]
         Y_c[i] = predict_cout(params, Tin, Cin, Q, U, T)
-        Y_p[i] = predict_power(power_model, U, T=T)
+        Y_p[i] = predict_power(power_model, U, T = T)
 
     print("\n--- C_out Sobol 指数 ---")
     np.random.seed(seed)
-    Si_c = sobol.analyze(problem, Y_c, print_to_console=False)
+    Si_c = sobol.analyze(problem, Y_c, print_to_console = False)
     print(f"{'变量':>6} {'一阶 S1':>10} {'总效应 ST':>10} {'交互 ST-S1':>10}")
     for i, name in enumerate(problem["names"]):
         inter = Si_c["ST"][i] - Si_c["S1"][i]
@@ -83,7 +83,7 @@ def main():
 
     print("\n--- P Sobol 指数 ---")
     np.random.seed(seed)
-    Si_p = sobol.analyze(problem, Y_p, print_to_console=False)
+    Si_p = sobol.analyze(problem, Y_p, print_to_console = False)
     print(f"{'变量':>6} {'一阶 S1':>10} {'总效应 ST':>10} {'交互 ST-S1':>10}")
     for i, name in enumerate(problem["names"]):
         inter = Si_p["ST"][i] - Si_p["S1"][i]
@@ -103,7 +103,7 @@ def main():
     }
     out_path = os.path.join(out_dir, "sobol_indices.json")
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+        json.dump(result, f, indent = 2, ensure_ascii = False)
     print(f"\n[INFO] Sobol 指数已保存至 {out_path}")
 
 

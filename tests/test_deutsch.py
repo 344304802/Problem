@@ -4,7 +4,7 @@ from modeling.deutsch import _deutsch_chain_vec, predict_cout, predict_eta, pred
 
 
 @pytest.fixture
-def params():
+def params() :
     return {
         "kA": [200.0, 200.0, 180.0, 180.0],
         "alpha": [0.01, 0.01, 0.01, 0.01],
@@ -14,7 +14,7 @@ def params():
 
 
 @pytest.fixture
-def base_inputs():
+def base_inputs() :
     Tin = 120.0
     Cin = 30.0
     Q = 50000.0
@@ -23,14 +23,14 @@ def base_inputs():
     return Tin, Cin, Q, U, T
 
 
-def test_eta_in_range(params, base_inputs):
+def test_eta_in_range(params, base_inputs) :
     Tin, Cin, Q, U, T = base_inputs
     etas = predict_eta(params, U, T, Q)
-    for e in etas:
+    for e in etas :
         assert 0.0 <= e <= 0.9999
 
 
-def test_higher_voltage_lower_cout(params, base_inputs):
+def test_higher_voltage_lower_cout(params, base_inputs) :
     Tin, Cin, Q, U, T = base_inputs
     base = predict_cout(params, Tin, Cin, Q, U, T)
     U_high = [u + 10 for u in U]
@@ -38,7 +38,7 @@ def test_higher_voltage_lower_cout(params, base_inputs):
     assert high < base
 
 
-def test_t_ref_is_optimum(params, base_inputs):
+def test_t_ref_is_optimum(params, base_inputs) :
     Tin, Cin, Q, U, T = base_inputs
     base = predict_cout(params, Tin, Cin, Q, U, T)
     T_over = [t + 50 for t in T]
@@ -49,7 +49,7 @@ def test_t_ref_is_optimum(params, base_inputs):
     assert under > base, "T<T_ref 双向偏离应使效率下降 C_out 上升"
 
 
-def test_bidirectional_r(params, base_inputs):
+def test_bidirectional_r(params, base_inputs) :
     Tin, Cin, Q, U, T = base_inputs
     T_over = [t + 50 for t in T]
     T_under = [t - 50 for t in T]
@@ -58,7 +58,7 @@ def test_bidirectional_r(params, base_inputs):
     assert under < over, "r=0.5 时过频惩罚应弱于过长惩罚"
 
 
-def test_r_zero_degrades_to_unilateral(params, base_inputs):
+def test_r_zero_degrades_to_unilateral(params, base_inputs) :
     Tin, Cin, Q, U, T = base_inputs
     T_under = [t - 50 for t in T]
     params_uni = {**params, "r": 0.0}
@@ -67,7 +67,7 @@ def test_r_zero_degrades_to_unilateral(params, base_inputs):
     assert abs(under_uni - base) < 1e-6, "r=0 时 T<T_ref 无惩罚(退化为单向)"
 
 
-def test_vec_matches_scalar(params, base_inputs):
+def test_vec_matches_scalar(params, base_inputs) :
     Tin, Cin, Q, U, T = base_inputs
     scalar = predict_cout(params, Tin, Cin, Q, U, T)
     full = params["kA"] + params["alpha"]
@@ -79,7 +79,7 @@ def test_vec_matches_scalar(params, base_inputs):
     assert abs(scalar - float(vec[0])) < 1e-4
 
 
-def test_predict_peak_nonneg(params, base_inputs):
+def test_predict_peak_nonneg(params, base_inputs) :
     _, Cin, _, _, T = base_inputs
     peak = predict_peak(params, T, Cin)
     assert peak >= 0.0
