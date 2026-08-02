@@ -14,9 +14,8 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei"]
-plt.rcParams["axes.unicode_minus"] = False
-COLOR = "#333333"
+from report.plot_style import setup, style_ax, PALETTE, COLOR
+setup()
 
 import yaml
 from data_loader.loader import load_raw, clean_and_impute
@@ -108,13 +107,7 @@ def main():
     ax.set_xlabel("振打瞬时峰值 $C_{peak}$ (mg/Nm³)")
     ax.set_ylabel("总电耗 $P$ (kW)")
     ax.set_title(f"Pareto 前沿: 电耗 vs 振打峰值 (工况{high_regime['id']}, $C_{{in}}={Cin:.1f}$)")
-    ax.grid(True, alpha=0.3)
-    ax.tick_params(colors=COLOR)
-    for s in ax.spines.values():
-        s.set_color(COLOR)
-    ax.title.set_color(COLOR)
-    ax.xaxis.label.set_color(COLOR)
-    ax.yaxis.label.set_color(COLOR)
+    style_ax(ax)
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "pareto_front.png"), dpi=150)
     plt.close()

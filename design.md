@@ -441,3 +441,44 @@ PowerModel -- OptSolution : 目标P
 3. **排放阈值参数化**：`solve_one_regime(...,C_limit)` 把阈值作为入参，问题 4 复用而非重写，保证收紧前后结果可比（spec 5.4 合理性）。
 4. **多算法交叉验证**：SLSQP 主求解 + PSO/GA 备选，避免局部最优，多起点 + 固定种子保证可复现（spec 5.2、5.5 第 6 点）。
 5. **振打动态约束双重处理**：硬约束 $$T_i\leq T_{crit,i}$$ + 积灰惩罚项，防止退化（spec 4.2 规则 4）。
+
+---
+
+# 三、设计演进记录（实现阶段偏差与扩展）
+
+> 本节记录实现阶段因数据特征与外部评审而产生的与初始设计的偏差及新增内容。初始设计（第一、二章）保留不动，本节为增量记录。详见 `数学思路详解.md` 第九节。
+
+## 3.1 模型结构演进
+
+| 初始设计 | 实际实现 | 偏差原因 |
+|---------|---------|---------|
+| $$P=\sum k_iU_i^2$$（4 参数） | $$P=\sum k_iU_i^2+\sum\beta_i/T_i+c$$（9 参数） | 初始 $$R^2=0.357$$，加入振打功耗项后 $$R^2=0.9979$$。`predict_power` 接口增加 `T` 参数 |
+| 独立 $$kA_i$$（8 参数 Deutsch） | 共享 $$kA_0$$，$$g=[1,1,0.9,0.9]$$（5 参数） | $$C_{out}$$ 限幅致 8 参数欠定，$$\Delta\text{AIC}=-9836$$ 支持 5 参数 |
+| 单向振打衰减 $$\max(0,T-T_{ref})$$ | 双向偏离 $$d_i$$，$$r=0.5$$ 固定 | 物理上过频振打也降效率；$$r$$ 因限幅不可辨识，先验 $$0.5$$ |
+| 绝对灵敏度 $$S=\partial y/\partial x$$ | 弹性系数 $$E=\partial\ln y/\partial\ln x$$ | 消除电压(kV)/振打(s)量纲差异，可跨变量比较 |
+| 硬定 $$K=5$$ | 轮廓系数选 $$K=6$$ | silhouette$$_{K=6}=0.3553$$ 最高，$$K\geq7$$ 最小工况占比 $$<3\%$$ |
+| `curve_fit` 拟合 Deutsch | `minimize(L-BFGS-B)` 对数残差 + 50 次多起点 | `curve_fit` 多维真值歧义 + 限幅致数值不稳定 |
+| `lstsq` 拟合电耗 | `lsq_linear` 约束 $$k_i,\beta_i\geq0$$ | 无约束拟合出负系数，物理不合理 |
+
+## 3.2 新增模块与脚本
+
+| 脚本 | 功能 | 初始设计无 |
+|------|------|-----------|
+| `cross_validation.py` | 时序交叉验证（前 5 天训练后 2 天测试） | ✓ |
+| `bayesian_estimation.py` | 贝叶斯参数估计（Laplace 近似 95% CI） | ✓ |
+| `robust_optimization.py` | 鲁棒优化（机会约束 $$P(C_{out}\leq10)\geq95\%$$） | ✓ |
+| `pareto_optimization.py` | 多目标 Pareto 前沿（电耗 vs 峰值） | ✓ |
+| `sobol_sensitivity.py` | 全局敏感性 Sobol 指数 | ✓ |
+| `additional_analysis.py` | $$C_{limit}$$ 扫描/r 敏感性/振打同步性 | ✓ |
+| `model_evaluation.py` | AIC/BIC + RF 对比 + 覆盖率 | ✓ |
+| `report/plot_style.py` | 统一绘图样式（配色/字号/网格） | ✓ |
+
+## 3.3 接口变更
+
+- `predict_power(power_model, U)` → `predict_power(power_model, U, T=None)`：新增 `T` 参数用于振打功耗项。所有调用方（`solve.py`、`jacobian.py`、`compare.py`、`cross_validation.py` 等）已同步传 `T`。
+- `fit_deutsch_params` 返回的 `params` 新增 `r`、`T_ref` 字段；`predict_cout`/`predict_peak` 内部使用双向偏离逻辑。
+- `cluster_regimes` 新增轮廓系数选 K 逻辑，`k` 参数仍传入但仅作上限参考。
+
+## 3.4 产物清单扩展
+
+初始设计 5 张图 + 2 个 JSON，实际 11 张图 + 8 个 JSON + 3 份文档。新增产物见 `solution_notes.md` 第七节。

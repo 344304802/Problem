@@ -55,9 +55,10 @@
 - $C_{out} = f(T_{in}, C_{in}, Q, U_1\sim U_4, T_1\sim T_4)$  ... (1)
 - $C_i = C_{i-1} \cdot (1 - \eta_i), i=1\sim 4$  ... (2)
 - $C_{out} = C_4 \cdot 1000$  ... (3)
-- $\eta_i = 1 - \exp(-k_i \cdot U_i^2 \cdot A_i / Q)$  ... (4)
+- $\eta_i = \big(1 - \exp(-kA_0 \cdot g_i \cdot U_i^2 / Q)\big) \cdot \exp(-\alpha_i \cdot d_i)$  ... (4)
+  - 其中 $kA_i = kA_0 \cdot g_i$（共享 $kA_0$，$g=[1,1,0.9,0.9]$），$d_i$ 为双向偏离量（$T_i \geq T_{ref,i}$ 时 $d_i=T_i-T_{ref,i}$，否则 $d_i=r(T_{ref,i}-T_i)$，$r=0.5$）
 - $C_{peak} = g(T_1\sim T_4, C_{in})$  ... (5)
-- $P_{total} = \sum k_i \cdot U_i^2$  ... (6)
+- $P_{total} = \sum k_i \cdot U_i^2 + \sum \beta_i / T_i + c$  ... (6)
 
 **问题 2 工况划分 + 优化**
 - $\cup \Omega_k = \Omega_{all}, \Omega_j \cap \Omega_k = \emptyset$  ... (7)
@@ -69,9 +70,9 @@
 - $\eta_i(T_i) \geq \eta_{min,i}$  ... (13)
 
 **问题 3 灵敏度分析**
-- $S_{U_i}^C = \partial C_{out}/\partial U_i, \quad S_{T_i}^C = \partial C_{out}/\partial T_i$  ... (14)
-- $S_{U_i}^P = \partial P_{total}/\partial U_i, \quad S_{T_i}^P = \partial P_{total}/\partial T_i$  ... (15)
-- 若 $|S_{U_i}^C / S_{U_i}^P| > |S_{T_i}^C / S_{T_i}^P| \rightarrow$ 优先调电压  ... (16)
+- $E_{U_i}^C = \partial \ln C_{out}/\partial \ln U_i, \quad E_{T_i}^C = \partial \ln C_{out}/\partial \ln T_i$  ... (14)
+- $E_{U_i}^P = \partial \ln P_{total}/\partial \ln U_i, \quad E_{T_i}^P = \partial \ln P_{total}/\partial \ln T_i$  ... (15)
+- 若 $|E_{U_i}^C / E_{U_i}^P| > |E_{T_i}^C / E_{T_i}^P| \rightarrow$ 优先调电压  ... (16)
 
 **问题 4 排放收紧**
 - $C_{out} \leq C_{limit}' = 5$  ... (17)
@@ -80,11 +81,12 @@
 ## **2.3 基本假设**
 - H1：各电场串联独立工作，总效率为单级效率连乘。
 - H2：单级除尘效率服从 Deutsch 方程形式。
-- H3：电耗与电压平方成正比 $P_i = k_i \cdot U_i^2$。
-- H4：振打周期越大→积灰越厚→效率下降越大（单调性）。
+- H3：电耗含电压二次项与振打频率项 $P_i = k_i \cdot U_i^2 + \beta_i / T_i + c$（振打电机功耗 $\propto$ 频率 $= 1/T$）。
+- H4：振打周期偏离参考值 $T_{ref}$ 双向都使效率下降（过长积灰、过频扬尘），$r=0.5$ 为过频副作用占比。
 - H5：工况参数在单个时间窗口内稳定。
 - H6：入口条件与操作参数之间无强耦合交互。
 - H7：振打瞬时峰值仅与振打周期和当前浓度相关。
+- H8：电除尘器工作在电晕放电伏安特性单调区，二次电压与二次电流一一对应，调节二次电压等价于调节二次电流，不单独建模电流（电耗 $$U^2$$ 近似 $$U\cdot I$$，隐含 $$I\propto U$$）。
 
 # **3. 数据约束（基于实际数据）**
 
@@ -172,9 +174,9 @@
 
 **方案**
 1. 以 Deutsch 方程为核心结构建立单级效率模型：$\eta_i = 1 - \exp(-k_i \cdot U_i^2 \cdot A_i / Q)$，从历史数据拟合各电场系数 $k_i\cdot A_i$（合并为待定参数）。
-2. 振打周期对效率的动态衰减建模：$\eta_i(T_i) = \eta_{i,0} \cdot \exp(-\alpha_i \cdot (T_i - T_{ref}))$，从历史数据拟合衰减系数 $\alpha_i$（假设 H4）。
-3. 总出口浓度：$C_{out} = C_{in} \cdot 1000 \cdot \prod (1 - \eta_i(U_i, T_i, Q))$，通过历史数据拟合参数后外推。
-4. 电耗模型：$P_{total} = \sum k_i \cdot U_i^2$，用历史 $U_1\sim U_4$、$P_{total}$ 数据最小二乘拟合 $k_i$（假设 H3）。
+2. 振打周期对效率的动态衰减建模（双向偏离）：$\eta_i(T_i) = \eta_{i,0} \cdot \exp(-\alpha_i \cdot d_i)$，$d_i$ 为 $T_i$ 偏离 $T_{ref,i}$ 的双向偏离量（$r=0.5$），从历史数据拟合衰减系数 $\alpha_i$（假设 H4）。
+3. 总出口浓度：$C_{out} = C_{in} \cdot 1000 \cdot \prod (1 - \eta_i(U_i, T_i, Q))$，通过历史数据拟合参数后外推。共享 $kA_0$（$g=[1,1,0.9,0.9]$）缓解 $C_{out}$ 限幅致欠定。
+4. 电耗模型：$P_{total} = \sum k_i \cdot U_i^2 + \sum \beta_i / T_i + c$，用 `lsq_linear` 约束 $k_i,\beta_i\geq0$ 拟合（$R^2=0.9979$，假设 H3）。
 5. 振打瞬时峰值：因数据为分钟级无法直接观测秒级峰值，采用机理估算 $C_{peak} \propto$ 积灰厚度 $\propto$ 振打周期，建立 $C_{peak} = g(T_1\sim T_4, C_{in})$ 的半经验关系。
 6. 辅助用随机森林/梯度提升做特征重要性分析，量化各因素影响方向与显著性，作为机理模型的交叉验证。
 
