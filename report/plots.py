@@ -112,23 +112,31 @@ def plot_sensitivity_heatmap(sens, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
-    SC = np.array([sens["SC_U"], sens["SC_T"]])
+    # 优先用无量纲弹性系数 E=∂ln y/∂ln x, 消除电压(kV)/振打(s)量纲差异
+    if "EC_U" in sens:
+        SC = np.array([sens["EC_U"], sens["EC_T"]])
+        SP = np.array([sens["EP_U"], sens["EP_T"]])
+        lbl_C, lbl_P, lbl_R = "浓度弹性 $E^C$", "电耗弹性 $E^P$", "性价比 $|E^C/E^P|$"
+    else:
+        SC = np.array([sens["SC_U"], sens["SC_T"]])
+        SP = np.array([sens["SP_U"], sens["SP_T"]])
+        lbl_C, lbl_P, lbl_R = "浓度灵敏度 $S^C$", "电耗灵敏度 $S^P$", "性价比 $|S^C/S^P|$"
+
     im0 = axes[0].imshow(SC, cmap="coolwarm", aspect="auto")
     axes[0].set_yticks([0, 1]); axes[0].set_yticklabels(["U", "T"])
     axes[0].set_xticks(range(4)); axes[0].set_xticklabels(["1", "2", "3", "4"])
-    axes[0].set_title("浓度灵敏度 $S^C$"); plt.colorbar(im0, ax=axes[0])
+    axes[0].set_title(lbl_C); plt.colorbar(im0, ax=axes[0])
 
-    SP = np.array([sens["SP_U"], sens["SP_T"]])
     im1 = axes[1].imshow(SP, cmap="coolwarm", aspect="auto")
     axes[1].set_yticks([0, 1]); axes[1].set_yticklabels(["U", "T"])
     axes[1].set_xticks(range(4)); axes[1].set_xticklabels(["1", "2", "3", "4"])
-    axes[1].set_title("电耗灵敏度 $S^P$"); plt.colorbar(im1, ax=axes[1])
+    axes[1].set_title(lbl_P); plt.colorbar(im1, ax=axes[1])
 
     ratio = np.abs(SC) / (np.abs(SP) + 1e-12)
     im2 = axes[2].imshow(ratio, cmap="YlOrRd", aspect="auto")
     axes[2].set_yticks([0, 1]); axes[2].set_yticklabels(["U", "T"])
     axes[2].set_xticks(range(4)); axes[2].set_xticklabels(["1", "2", "3", "4"])
-    axes[2].set_title("性价比 $|S^C/S^P|$"); plt.colorbar(im2, ax=axes[2])
+    axes[2].set_title(lbl_R); plt.colorbar(im2, ax=axes[2])
 
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "sensitivity_heatmap.png"), dpi=150)

@@ -2,14 +2,18 @@ import numpy as np
 from scipy.optimize import minimize
 
 
-def _deutsch_chain_vec(params, Tin, Cin, Q, U1, U2, U3, U4, T1, T2, T3, T4, T_ref):
+def _deutsch_chain_vec(params, Tin, Cin, Q, U1, U2, U3, U4, T1, T2, T3, T4, T_ref, r=0.5):
+    # 振打双向偏离惩罚: T>T_ref 周期过长(粉尘过厚), T<T_ref 周期过短(振打扬尘), 均降低效率
+    # r∈[0.1,1] 为过频副作用占比, r=1 对称, r=0 退化为单向(旧模型)
     kA = np.array(params[:4])
     alpha = np.array(params[4:8])
     U = [U1, U2, U3, U4]
     T = [T1, T2, T3, T4]
     C = np.array(Cin) * 1000.0
     for i in range(4):
-        eta = (1.0 - np.exp(-kA[i] * np.array(U[i]) ** 2 / np.array(Q))) * np.exp(-alpha[i] * np.maximum(0, np.array(T[i]) - T_ref[i]))
+        delta = np.array(T[i]) - T_ref[i]
+        penalty = alpha[i] * np.where(delta >= 0, delta, r * (-delta))
+        eta = (1.0 - np.exp(-kA[i] * np.array(U[i]) ** 2 / np.array(Q))) * np.exp(-penalty)
         eta = np.clip(eta, 0.0, 0.9999)
         C = C * (1.0 - eta)
     return C
@@ -34,6 +38,9 @@ def fit_deutsch_params(df, bounds):
     Q_mean = np.mean(Q)
     # kA_0 初值: 令单级效率 η≈0.9, kA_0 = -Q/U²·ln(0.1) ≈ 2.3·Q/U² (用前电场电压)
     kA0_init = 2.3 * Q_mean / ((U_mean[0] + U_mean[1]) / 2) ** 2
+    # 振打双向偏离比例 r 固定 0.5 (物理先验: 过频副作用约为过长的 50%)
+    # 不拟合 r 因 C_out 限幅导致不可辨识(拟合会贴下界 0.1 退化为单向)
+    r_fixed = 0.5
     p0 = np.array([kA0_init, 0.005, 0.005, 0.005, 0.005])
 
     def expand(p):
@@ -42,9 +49,9 @@ def fit_deutsch_params(df, bounds):
 
     def loss(p):
         full = expand(p)
-        pred = _deutsch_chain_vec(full, Tin, Cin, Q, U[0], U[1], U[2], U[3], T[0], T[1], T[2], T[3], T_ref)
-        r = np.log(np.maximum(pred, 0.01)) - np.log(np.maximum(y, 0.01))
-        return np.sum(r ** 2)
+        pred = _deutsch_chain_vec(full, Tin, Cin, Q, U[0], U[1], U[2], U[3], T[0], T[1], T[2], T[3], T_ref, r=r_fixed)
+        r_res = np.log(np.maximum(pred, 0.01)) - np.log(np.maximum(y, 0.01))
+        return np.sum(r_res ** 2)
 
     # kA_0 边界 [50, 2000], alpha 下界 0.001 防止拟合成 0
     lower = np.array([50.0, 0.001, 0.001, 0.001, 0.001])
@@ -71,17 +78,17 @@ def fit_deutsch_params(df, bounds):
     if best_p is not None:
         popt = best_p
         full = expand(popt)
-        y_pred = _deutsch_chain_vec(full, Tin, Cin, Q, U[0], U[1], U[2], U[3], T[0], T[1], T[2], T[3], T_ref)
+        y_pred = _deutsch_chain_vec(full, Tin, Cin, Q, U[0], U[1], U[2], U[3], T[0], T[1], T[2], T[3], T_ref, r=r_fixed)
         ss_res = np.sum((y - y_pred) ** 2)
         ss_tot = np.sum((y - y.mean()) ** 2)
         r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
         rmse = np.sqrt(ss_res / len(y))
-        print(f"[INFO] Deutsch拟合(共享kA_0): R2={r2:.4f}, RMSE={rmse:.4f}")
-        print(f"  kA_0={popt[0]:.2f}, kA={full[:4].tolist()}, alpha={full[4:8].tolist()}, T_ref={T_ref.tolist()}")
+        print(f"[INFO] Deutsch拟合(共享kA_0,双向振打r=0.5): R2={r2:.4f}, RMSE={rmse:.4f}")
+        print(f"  kA_0={popt[0]:.2f}, kA={full[:4].tolist()}, alpha={full[4:8].tolist()}, r={r_fixed}, T_ref={T_ref.tolist()}")
         return {
             "kA": full[:4].tolist(), "alpha": full[4:8].tolist(),
             "T_ref": T_ref.tolist(), "r2": float(r2), "rmse": float(rmse),
-            "kA_0": float(popt[0]), "g": g.tolist(),
+            "kA_0": float(popt[0]), "g": g.tolist(), "r": float(r_fixed),
         }
     else:
         print("[WARN] Deutsch拟合失败")
@@ -92,9 +99,12 @@ def predict_cout(params, Tin, Cin, Q, U, T):
     kA = np.array(params["kA"])
     alpha = np.array(params["alpha"])
     T_ref = np.array(params["T_ref"])
+    r = params.get("r", 0.5)
     C = Cin * 1000.0
     for i in range(4):
-        eta = (1.0 - np.exp(-kA[i] * U[i] ** 2 / Q)) * np.exp(-alpha[i] * max(0, T[i] - T_ref[i]))
+        delta = T[i] - T_ref[i]
+        penalty = alpha[i] * (delta if delta >= 0 else r * (-delta))
+        eta = (1.0 - np.exp(-kA[i] * U[i] ** 2 / Q)) * np.exp(-penalty)
         eta = min(max(eta, 0.0), 0.9999)
         C = C * (1.0 - eta)
     return float(C)
@@ -104,9 +114,12 @@ def predict_eta(params, U, T, Q):
     kA = np.array(params["kA"])
     alpha = np.array(params["alpha"])
     T_ref = np.array(params["T_ref"])
+    r = params.get("r", 0.5)
     etas = []
     for i in range(4):
-        eta = (1.0 - np.exp(-kA[i] * U[i] ** 2 / Q)) * np.exp(-alpha[i] * max(0, T[i] - T_ref[i]))
+        delta = T[i] - T_ref[i]
+        penalty = alpha[i] * (delta if delta >= 0 else r * (-delta))
+        eta = (1.0 - np.exp(-kA[i] * U[i] ** 2 / Q)) * np.exp(-penalty)
         etas.append(float(min(max(eta, 0.0), 0.9999)))
     return tuple(etas)
 
@@ -114,8 +127,10 @@ def predict_eta(params, U, T, Q):
 def predict_peak(params, T, Cin):
     alpha = np.array(params["alpha"])
     T_ref = np.array(params["T_ref"])
+    r = params.get("r", 0.5)
     peak = 0.0
     for i in range(4):
-        thickness = max(0, T[i] - T_ref[i])
+        delta = T[i] - T_ref[i]
+        thickness = delta if delta >= 0 else r * (-delta)
         peak += alpha[i] * thickness * Cin * 1000.0 * 0.1
     return float(peak)
