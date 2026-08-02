@@ -1,9 +1,9 @@
 {
   "seed": 42,
   "n_rows": 10080,
-  "k_regimes": 5,
+  "k_regimes": 6,
   "C_limit": 10.0,
   "C_limit_new": 5.0,
   "power_r2": 0.3567414291387704,
-  "deutsch_r2": -111039.23964234372
+  "deutsch_r2": -146494.37286879192
 }

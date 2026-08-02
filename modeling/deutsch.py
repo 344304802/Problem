@@ -27,18 +27,28 @@ def fit_deutsch_params(df, bounds):
     U_mean = [np.mean(U[i]) for i in range(4)]
     Q_mean = np.mean(Q)
 
-    kA0 = []
-    for i in range(4):
-        kA0.append(1.6 * Q_mean / U_mean[i] ** 2)
-    p0 = np.concatenate([np.array(kA0), np.array([0.001] * 4)])
+    # 物理先验: 同型号 ESP 四电场几何相似, kA 应相近。共享 kA_0, 参数从 8 降到 5, 缓解欠定。
+    # 后电场粉尘更细/比电阻略高, 用 g_i 微调: g=[1.0,1.0,0.9,0.9]
+    g = np.array([1.0, 1.0, 0.9, 0.9])
+    U_mean = [np.mean(U[i]) for i in range(4)]
+    Q_mean = np.mean(Q)
+    # kA_0 初值: 令单级效率 η≈0.9, kA_0 = -Q/U²·ln(0.1) ≈ 2.3·Q/U² (用前电场电压)
+    kA0_init = 2.3 * Q_mean / ((U_mean[0] + U_mean[1]) / 2) ** 2
+    p0 = np.array([kA0_init, 0.005, 0.005, 0.005, 0.005])
+
+    def expand(p):
+        # p=[kA_0, α1..α4] -> full=[kA_0*g1..kA_0*g4, α1..α4]
+        return np.concatenate([p[0] * g, p[1:5]])
 
     def loss(p):
-        pred = _deutsch_chain_vec(p, Tin, Cin, Q, U[0], U[1], U[2], U[3], T[0], T[1], T[2], T[3], T_ref)
+        full = expand(p)
+        pred = _deutsch_chain_vec(full, Tin, Cin, Q, U[0], U[1], U[2], U[3], T[0], T[1], T[2], T[3], T_ref)
         r = np.log(np.maximum(pred, 0.01)) - np.log(np.maximum(y, 0.01))
         return np.sum(r ** 2)
 
-    lower = np.concatenate([np.array([1.0] * 4), np.array([0.0] * 4)])
-    upper = np.concatenate([np.array([5000.0] * 4), np.array([0.05] * 4)])
+    # kA_0 边界 [50, 2000], alpha 下界 0.001 防止拟合成 0
+    lower = np.array([50.0, 0.001, 0.001, 0.001, 0.001])
+    upper = np.array([2000.0, 0.05, 0.05, 0.05, 0.05])
 
     best_p = None
     best_loss = np.inf
@@ -46,9 +56,9 @@ def fit_deutsch_params(df, bounds):
         if trial == 0:
             p_try = p0.copy()
         elif trial < 10:
-            p_try = p0 * np.random.uniform(0.5, 2.0, size=8)
+            p_try = p0 * np.random.uniform(0.5, 2.0, size=5)
         else:
-            p_try = np.array([np.random.uniform(lower[i], upper[i]) for i in range(8)])
+            p_try = np.array([np.random.uniform(lower[i], upper[i]) for i in range(5)])
         p_try = np.clip(p_try, lower, upper)
         try:
             res = minimize(loss, p_try, method="L-BFGS-B", bounds=list(zip(lower, upper)), options={"maxiter": 10000})
@@ -60,16 +70,18 @@ def fit_deutsch_params(df, bounds):
 
     if best_p is not None:
         popt = best_p
-        y_pred = _deutsch_chain_vec(popt, Tin, Cin, Q, U[0], U[1], U[2], U[3], T[0], T[1], T[2], T[3], T_ref)
+        full = expand(popt)
+        y_pred = _deutsch_chain_vec(full, Tin, Cin, Q, U[0], U[1], U[2], U[3], T[0], T[1], T[2], T[3], T_ref)
         ss_res = np.sum((y - y_pred) ** 2)
         ss_tot = np.sum((y - y.mean()) ** 2)
         r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
         rmse = np.sqrt(ss_res / len(y))
-        print(f"[INFO] Deutsch拟合: R2={r2:.4f}, RMSE={rmse:.4f}")
-        print(f"  kA={popt[:4]}, alpha={popt[4:8]}, T_ref={T_ref}")
+        print(f"[INFO] Deutsch拟合(共享kA_0): R2={r2:.4f}, RMSE={rmse:.4f}")
+        print(f"  kA_0={popt[0]:.2f}, kA={full[:4].tolist()}, alpha={full[4:8].tolist()}, T_ref={T_ref.tolist()}")
         return {
-            "kA": popt[:4].tolist(), "alpha": popt[4:8].tolist(),
+            "kA": full[:4].tolist(), "alpha": full[4:8].tolist(),
             "T_ref": T_ref.tolist(), "r2": float(r2), "rmse": float(rmse),
+            "kA_0": float(popt[0]), "g": g.tolist(),
         }
     else:
         print("[WARN] Deutsch拟合失败")

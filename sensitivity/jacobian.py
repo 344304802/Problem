@@ -44,8 +44,17 @@ def numeric_jacobian(model, x0, regime, bounds, step_ratio=0.01):
     if consistency > 0.1:
         print(f"[WARN] 步长减半不一致: {consistency:.4f}")
 
+    # 无量纲弹性系数 E = ∂ln y / ∂ln x = (x/y)·∂y/∂x, 消除量纲差异 (电压kV vs 振打s)
+    C0 = cout_full(x)
+    P0 = power_full(x)
+    EC = np.array([x[i] / (C0 + 1e-12) * SC[i] for i in range(8)])
+    EP = np.array([x[i] / (P0 + 1e-12) * SP[i] for i in range(8)])
+
     return {
         "SC_U": SC[:4].tolist(), "SC_T": SC[4:].tolist(),
         "SP_U": SP[:4].tolist(), "SP_T": SP[4:].tolist(),
+        "EC_U": EC[:4].tolist(), "EC_T": EC[4:].tolist(),
+        "EP_U": EP[:4].tolist(), "EP_T": EP[4:].tolist(),
+        "C0": float(C0), "P0": float(P0),
         "consistency": float(consistency),
     }

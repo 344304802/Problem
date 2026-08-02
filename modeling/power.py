@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.optimize import lsq_linear
 
 
 def fit_power_model(df):
@@ -15,20 +16,26 @@ def fit_power_model(df):
     print(f"[INFO] 电耗模型 P=Σk_i*U_i^2: k={k}, R2={r2:.4f}, cond={cond:.2f}")
 
     if r2 < 0.9:
-        print("[WARN] R2<0.9, 尝试扩展模型 P=Σ(k_i*U_i^2+b_i*U_i)+c")
+        print("[WARN] R2<0.9, 尝试扩展模型 P=Σk_i*U_i^2+c, 约束 k_i>=0 (物理: 电场能量∝U², c吸收固定损耗)")
         X_ext = np.column_stack(
             [df[f"U{i}_kV"].values ** 2 for i in range(1, 5)] +
-            [df[f"U{i}_kV"].values for i in range(1, 5)] +
             [np.ones(len(df))]
         )
-        coef, _, _, _ = np.linalg.lstsq(X_ext, P, rcond=None)
-        P_pred2 = X_ext @ coef
+        # k_i(前4) >= 0 (物理约束), c 自由
+        lo = np.concatenate([np.zeros(4), -np.inf * np.ones(1)])
+        hi = np.inf * np.ones(5)
+        res = lsq_linear(X_ext, P, bounds=(lo, hi), method="trf")
+        coef5 = res.x
+        P_pred2 = X_ext @ coef5
         r2_ext = 1 - np.sum((P - P_pred2) ** 2) / ss_tot
-        print(f"[INFO] 扩展模型 R2={r2_ext:.4f}")
+        k_ext = coef5[:4].tolist()
+        b_ext = [0.0] * 4
+        c_ext = float(coef5[4])
+        print(f"[INFO] 扩展模型(约束k>=0, P=ΣkU²+c) R2={r2_ext:.4f}, k={k_ext}, c={c_ext:.2f}")
         return {
             "k": k.tolist(), "r2": float(r2), "cond": float(cond),
-            "extended": True, "coef": coef.tolist(),
-            "k_ext": coef[:4].tolist(), "b_ext": coef[4:8].tolist(), "c_ext": float(coef[8]),
+            "extended": True, "coef": k_ext + b_ext + [c_ext],
+            "k_ext": k_ext, "b_ext": b_ext, "c_ext": c_ext,
             "r2_ext": float(r2_ext),
         }
     return {"k": k.tolist(), "r2": float(r2), "cond": float(cond), "extended": False}
