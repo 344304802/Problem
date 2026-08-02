@@ -46,7 +46,8 @@ def run():
         for _, r in df_test.iterrows()
     ])
     yhat_p = np.array([
-        predict_power(power_m, [r["U1_kV"], r["U2_kV"], r["U3_kV"], r["U4_kV"]])
+        predict_power(power_m, [r["U1_kV"], r["U2_kV"], r["U3_kV"], r["U4_kV"]],
+                      T=[r["T1_s"], r["T2_s"], r["T3_s"], r["T4_s"]])
         for _, r in df_test.iterrows()
     ])
 

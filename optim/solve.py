@@ -18,7 +18,7 @@ def solve_one_regime(regime, model, bounds, C_limit=10.0, algo="SLSQP", multi_st
     np.random.seed(seed)
 
     def objective(x):
-        return predict_power(power_model, x[:4])
+        return predict_power(power_model, x[:4], T=x[4:8])
 
     def constraint_cout(x):
         cout = predict_cout(params, Tin, Cin, Q, x[:4], x[4:8])
@@ -38,7 +38,7 @@ def solve_one_regime(regime, model, bounds, C_limit=10.0, algo="SLSQP", multi_st
             if res.success:
                 cout = predict_cout(params, Tin, Cin, Q, res.x[:4], res.x[4:8])
                 if cout <= C_limit + 1e-6:
-                    P = predict_power(power_model, res.x[:4])
+                    P = predict_power(power_model, res.x[:4], T=res.x[4:8])
                     if best is None or P < best["P"]:
                         best = {
                             "U": res.x[:4].tolist(), "T": res.x[4:8].tolist(),
@@ -55,14 +55,14 @@ def solve_one_regime(regime, model, bounds, C_limit=10.0, algo="SLSQP", multi_st
             cout = predict_cout(params, Tin, Cin, Q, x[:4], x[4:8])
             if cout > C_limit:
                 return 1e6 + (cout - C_limit) * 1e4
-            return predict_power(power_model, x[:4])
+            return predict_power(power_model, x[:4], T=x[4:8])
         try:
             de_bounds = [(lb[i], ub[i]) for i in range(8)]
             res = differential_evolution(de_obj, bounds=de_bounds, seed=seed, maxiter=200, tol=1e-8, polish=True, workers=1)
             U, T = res.x[:4], res.x[4:8]
             cout = predict_cout(params, Tin, Cin, Q, U, T)
             best = {
-                "U": U.tolist(), "T": T.tolist(), "P": float(predict_power(power_model, U)),
+                "U": U.tolist(), "T": T.tolist(),                 "P": float(predict_power(power_model, U, T=T)),
                 "Cout": float(cout), "success": cout <= C_limit + 1e-6,
                 "n_iter": int(res.nit), "margin": float(C_limit - cout), "algo": "DE",
             }

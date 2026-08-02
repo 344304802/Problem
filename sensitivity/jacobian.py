@@ -24,7 +24,7 @@ def numeric_jacobian(model, x0, regime, bounds, step_ratio=0.01):
         return predict_cout(params, Tin, Cin, Q, x[:4], x[4:8])
 
     def power_full(x):
-        return predict_power(power_model, x[:4])
+        return predict_power(power_model, x[:4], T=x[4:8])
 
     x = np.concatenate([U, T])
     SC = np.zeros(8)

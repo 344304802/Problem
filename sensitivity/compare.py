@@ -17,7 +17,7 @@ def compare_two_regimes(regimes_results, model, bounds):
         Tin, Cin, Q = regime["mean"]["Temp"], regime["mean"]["C_in"], regime["mean"]["Q"]
         U, T = sol["U"], sol["T"]
         cout = predict_cout(params, Tin, Cin, Q, U, T)
-        P = predict_power(power_model, U)
+        P = predict_power(power_model, U, T=T)
         return {
             "id": regime["id"], "n": regime["n"],
             "Cin": Cin, "Temp": Tin, "Q": Q,

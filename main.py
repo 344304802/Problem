@@ -19,7 +19,8 @@ from sensitivity.compare import compare_two_regimes
 from tighten.resolve import resolve_under_limit, delta_power, feasibility_check
 from tighten.advice import high_conc_advice
 from report.plots import (plot_relation_curves, plot_regime_scatter,
-                          plot_param_compare, plot_sensitivity_heatmap, plot_delta_power)
+                          plot_param_compare, plot_sensitivity_heatmap, plot_delta_power,
+                          plot_relation_3d)
 from report.tables import to_markdown_tables
 
 
@@ -105,6 +106,7 @@ def run_pipeline(cfg_path="config/config.yaml", skip_mysql=True):
     print("步骤6: 输出与可视化")
     print("=" * 60)
     plot_relation_curves(model, df, out_dir)
+    plot_relation_3d(model, df, out_dir)
     plot_regime_scatter(regimes, df, out_dir)
     plot_param_compare(cmp, out_dir)
     if sens:

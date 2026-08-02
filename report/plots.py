@@ -169,3 +169,60 @@ def plot_delta_power(dp, out_dir):
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "delta_power.png"), dpi=150)
     plt.close()
+
+
+def plot_relation_3d(model, df, out_dir):
+    from mpl_toolkits.mplot3d import Axes3D
+    from modeling.deutsch import predict_cout
+    params = model["deutsch"]
+    os.makedirs(out_dir, exist_ok=True)
+
+    Tin_med = df["Temp_C"].median()
+    Cin_med = df["C_in_gNm3"].median()
+    Q_med = df["Q_Nm3h"].median()
+    U_med = [df[f"U{i}_kV"].median() for i in range(1, 5)]
+    T_med = [df[f"T{i}_s"].median() for i in range(1, 5)]
+
+    def surf(ax, xs, ys, f, xl, yl, title):
+        Xg, Yg = np.meshgrid(xs, ys)
+        Z = np.zeros_like(Xg)
+        for i in range(len(xs)):
+            for j in range(len(ys)):
+                Z[j, i] = f(xs[i], ys[j])
+        ax.plot_surface(Xg, Yg, Z, cmap="viridis", alpha=0.85, edgecolor="none")
+        ax.set_xlabel(xl); ax.set_ylabel(yl); ax.set_zlabel("C_out (mg/Nm³)")
+        ax.set_title(title)
+        ax.tick_params(colors=COLOR)
+
+    n = 30
+    fig = plt.figure(figsize=(16, 14))
+
+    ax1 = fig.add_subplot(2, 2, 1, projection="3d")
+    U1s = np.linspace(df["U1_kV"].min(), df["U1_kV"].max(), n)
+    U2s = np.linspace(df["U2_kV"].min(), df["U2_kV"].max(), n)
+    surf(ax1, U1s, U2s,
+         lambda u1, u2: predict_cout(params, Tin_med, Cin_med, Q_med, [u1, u2, U_med[2], U_med[3]], T_med),
+         "U1 (kV)", "U2 (kV)", "C_out vs 前两电场电压")
+
+    ax2 = fig.add_subplot(2, 2, 2, projection="3d")
+    T1s = np.linspace(df["T1_s"].min(), df["T1_s"].max(), n)
+    T2s = np.linspace(df["T2_s"].min(), df["T2_s"].max(), n)
+    surf(ax2, T1s, T2s,
+         lambda t1, t2: predict_cout(params, Tin_med, Cin_med, Q_med, U_med, [t1, t2, T_med[2], T_med[3]]),
+         "T1 (s)", "T2 (s)", "C_out vs 前两电场振打周期")
+
+    ax3 = fig.add_subplot(2, 2, 3, projection="3d")
+    Cis = np.linspace(df["C_in_gNm3"].min(), df["C_in_gNm3"].max(), n)
+    Qs = np.linspace(df["Q_Nm3h"].min(), df["Q_Nm3h"].max(), n)
+    surf(ax3, Cis, Qs,
+         lambda ci, q: predict_cout(params, Tin_med, ci, q, U_med, T_med),
+         "C_in (g/Nm³)", "Q (Nm³/h)", "C_out vs 入口浓度与流量")
+
+    ax4 = fig.add_subplot(2, 2, 4, projection="3d")
+    surf(ax4, U1s, T1s,
+         lambda u1, t1: predict_cout(params, Tin_med, Cin_med, Q_med, [u1, U_med[1], U_med[2], U_med[3]], [t1, T_med[1], T_med[2], T_med[3]]),
+         "U1 (kV)", "T1 (s)", "C_out vs 第1电场电压与振打")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, "relation_3d.png"), dpi=150)
+    plt.close()
